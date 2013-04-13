@@ -1,0 +1,14 @@
+#!/bin/bash
+
+for i in {1..100}
+do
+    echo "Playing Game: " $i
+    echo "Starting Sever"
+    java boardgame.Server -ng -t 7000 > /dev/null &
+    sleep 1
+    echo "Launching Client 1"
+    /path/to/player/one >> OutputfileName.txt &
+    sleep 1
+    echo "Launching Client 2"
+    /path/to/player/two >> OutputfileName2.txt
+done

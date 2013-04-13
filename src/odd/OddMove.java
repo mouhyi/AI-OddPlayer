@@ -9,7 +9,8 @@ import boardgame.Move;
  */
 public class OddMove extends Move {
     
-    protected int player;
+
+	protected int player;
     protected OddBoard.Piece color;
     protected int destCol;
     protected int destRow;
@@ -63,4 +64,16 @@ public class OddMove extends Move {
         destRow = Integer.parseInt(tokens[2]);
         destCol = Integer.parseInt(tokens[3]);
     }
+
+  	public OddBoard.Piece getColor() {
+  		return color;
+  	}
+
+  	public int getDestCol() {
+  		return destCol;
+  	}
+
+  	public int getDestRow() {
+  		return destRow;
+  	}
 }

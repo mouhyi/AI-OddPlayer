@@ -1,0 +1,77 @@
+
+
+AI for Games
+Chap 7- Board games p667
+
+  reasearch shows: minmax most suitable to board games
+  two-player game
+  zero-sum game
+  perfect information
+
+  Game Tree - Branching Factor and Depth
+  Odd = 8x7=56 board cells = 56 turns = depth
+  |states space| = 3^56, |terminal states| = 2^56
+  cell has 3 values: black/white stone | empty
+  b= 56,55,....1
+
+  Computers find it easier to play games with a small branching factor and deep tree than games
+  with a shallow tree but a huge branching factor.
+  
+  heuristic = the static evaluation function
+  
+  The game-playing algorithms we will look at do not take into account any strategy. All the strategic information, in the form of what kinds of positions to prefer, needs to be included in the static evaluation function.
+  
+  integer arithmetic is faster than floating point arithmetic on most machines. -> integer eval func
+  
+  
+  MinMax
+  The minimax algorithm we’ll look at here is recursive. At each recursion it tries to calculate the correct value of the current board position.
+  Performance
+    The algorithm is O(d) in memory, where d is the maximum depth of the search (or the maximum depth of the tree if that is smaller).
+    It is O(b^d) in time, where n is the number of possible moves at each board position. With a wide and deep tree, this can be incredibly inefficient.
+    Throughout the rest of this section we’ll look at ways to optimize its performance.
+
+  The static evaluation function scores a board according to one player’s point of view.
+  
+  Negamax
+  Using AB pruning with negamaxing, we have the simplest practical board game AI algorithm.
+
+
+  absNegascout p686
+  
+  
+  board hashing = state encoding = 56x2 bits; each call -> 2bits: 01:white, 10:black, 00:empty
+    Don't keep states in memory, use hash function and  then use hash table
+  
+  Comparing complete game states is an expensive procedure, since a game state may contain
+tens or hundreds of items of information. Comparing these against stored states in memory would
+take a long time. To speed up transposition table checks, a hash value is used.
+
+Incremental Zobrist Hashing
+
+  
+  
+  
+  *thinking on your opponent’s turn
+
+  heuristic = eval func + minmax store -> weights
+  
+  Iterative Deepening
+    If time runs out before a search has been completed, it uses the result of the search from the previous depth.
+
+
+  History Heuristic
+In algorithms that use transposition tables or other memory, iterative deepening can be a positive advantage to an algorithm. Algorithms such as negascout and AB negamax can be dramatically improved by considering the best moves first. Iterative deepening with memory allows a move to be quickly analyzed at a shallow level and later returned to in more depth. The results of the shallow search can be used to order the moves for the deeper search. This increases the number of prunes that can be made and speeds up the algorithm. Using the results of a previous iteration to order moves is called the history heuristic. It is a heuristic because it relies on the rule of thumb that a previous iteration will produce a good estimate as to the best move.
+
+  TD(λ) was later extended to TDLeaf(λ), specifically to better deal with Minimax searches. TDLeaf(λ) has been used, for example, in the chess program KnightCap.
+  
+  Learning would provide you with a value function to guide the Minimax search.
+  
+  
+  The Minimax Game Tree represents all the possible paths of action sequences
+of the two players Max and Min playing in alternating turns. The game tree
+is needed in order for the player to form a strategy against its opponent, so its
+formation should take place when it is the agent’s turn to play. Therefore, our
+player forms a new tree every time the opponent make his move
+
+

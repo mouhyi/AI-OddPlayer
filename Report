@@ -1,0 +1,45 @@
+
+
+value(s) = +v if my turn | -v if other player's turn
+
+
+In java you can have a separate timer thread running which sleeps for a certain amount of time, and upon wake up, it interrupts the AI thread. The AI thread can have an interruptexception handler which will be called when it gets interrupted.
+
+
+In a game like Odd, binary values to encode the content of the board and different piece configurations
+x*10+y = bit position
+
+bit tricks/ecoding of moves and states to make things fast
+
+
+minmax + learning-> evaluation function
+AI player should beat human players (me)
+
+
+A possible simplification to consider in a 2-player turn-based game is to encode the "current player" as part of the state. This adds state to input to the heuristic function. So, instead of f(x), we have f(x, player). However, that can be simplified by rolling player into x. Either way, f will always return the "Value" for the same player, but according to who's turn is next.
+To clarify by (simplified) example, f in chess should nearly always return a very high score if white can kill black's queen. But if black will have the possibility of killing white's queen in the next move, then f should return a very low number.
+
+
+Advice
+
+Some hints on writing a winning player:
+
+Play the game against the random player, your player and/or other people to get a feel for the strategy required.
+
+Start small and build up your player incrementally. Here is a natural progression of steps:
+  Figure out an evaluation function for board positions.
+  Encode a minimax-like algorithm with fixed depth (or iterative deepening).
+  Insert alpha-beta pruning.
+  Add whatever other heuristics you think may help.
+  Devise ways to tune the heuristics, manually or, better yet, using learning.
+  
+Test your code after each significant change. Make sure you always have a working program.
+
+Experiment to see what effect your changes have. Leave yourself time for tweaking your player and trying out different approaches.
+
+Ask questions if you
+  have trouble understanding the provided code,
+  need help getting started,
+  get stuck,
+  are wondering if your ideas will work,
+  or have any philosophical question, be it about football or not.

@@ -1,0 +1,25 @@
+Hello,
+
+I would like to clarify what is required for the CS424 project now that, hopefully, most of you familiarized yourself with the code I sent a few days ago. You should submit:
+
+An implementation of your player program. You have two options: 
+Submit ONE SOURCE FILE MyPlayer.java, containing a class that extends Player, much like the OddRandomPlayer we gave as an example. We will compile and test it with our implementation of the Client/Board/Move.
+If you have issues with our implementation of Client/Board/Move etc., feel free to have your own, in the programming language of your choice. Your submission should contain : your code, a README file and a 'make' file. After 'make', I should be able to run a command
+                  runMyClient [serverName [serverPort]]
+                           Where serverName is the server address (default=localhost) and
+                                     serverPort is the port number (default=8123)
+
+         Before you submit: please make sure you test your code by running the server with our implementation of the Server/Board/Move. 
+    2.  A written report documenting your approach
+
+
+
+Say John Smith submitted his code with the first option, and Emma Jones using the second one. I will run a game as follows:
+-  'java boardgame.Server'  -> based on our code
+-  'java boardgame.Client odd.MyPlayer'  -> based on our code + John's MyPlayer.java
+-  'runMyClient' -> based on Emma's submission
+
+
+Feel free to ask for more clarifications.
+Have fun!
+Gheorghe Comanici
