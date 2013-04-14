@@ -472,6 +472,8 @@ public class Server implements Runnable {
                         if( board.getWinner() == players[i].getPlayerID() ) win = i;
                     }
                 }
+                // EDIT
+                //out.print(" -- Winner:");
 		out.print( (win > -1 ? board.getNameForID( players[win].getPlayerID() ) : msg ) + '\t' );
                 out.print( (win > -1 ? players[win].getName() : "NOBODY") + '\t');
                 out.print( Integer.toString(board.getTurnsPlayed()) + '\t' );

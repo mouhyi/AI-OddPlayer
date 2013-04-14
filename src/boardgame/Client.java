@@ -108,8 +108,8 @@ public class Client implements Runnable {
         try { 
 	    myMove = player.chooseMove( (Board)board.clone() );
 	    if( myMove == null) {
-		System.err.println( "ABORTING: Player didn't return a move. Nothing to send to server!" );
-		return;
+			System.err.println( "ABORTING: Player didn't return a move. Nothing to send to server!" );
+			return;
 	    }
 	} catch( Exception e ) {
             System.err.println( "ABORTING: Exception in " + 

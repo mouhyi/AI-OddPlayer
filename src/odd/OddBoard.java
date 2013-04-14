@@ -110,7 +110,9 @@ public class OddBoard extends Board {
         	(m.color == Piece.WP) ? Piece.WP : Piece.BP;
         
         if(--numEmpty == 0) determineWinner();
-        else turn = (turn == 1) ? 2 : 1;        
+        else turn = (turn == 1) ? 2 : 1;    
+        //EDIT
+        moveCount++;
     }
 
     /** Get the number of turns played. */

@@ -1,0 +1,10 @@
+MTDPlayer vs. RandomPlayer: 710 - 290
+Player1 vs. Player2: 373 - 627
+
+MTDPlayer vs. RandomPlayer: 521 - 479
+Player1 vs. Player2: 392 - 608
+
+MTDPlayer vs. RandomPlayer: 698 - 302
+Player1 vs. Player2: 362 - 638
+
+
