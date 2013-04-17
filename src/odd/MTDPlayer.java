@@ -30,9 +30,6 @@ public class MTDPlayer extends Player {
 
 	static int MAX_SEARCH_DEPTH = 61;
 	HashMap<Long, State> TranspositionTable;
-	// static OddMove bestMove;
-	// TODO AIPLAYEr -> dynamic player.color
-	static int AIPLAYER = 2;
 	static final int SIZE = 4;
 	static final int SIZE_DATA = 2 * SIZE + 1;
 	static final int VALID_ENTRIES = SIZE_DATA * SIZE_DATA - SIZE * (SIZE + 1);
@@ -68,7 +65,7 @@ public class MTDPlayer extends Player {
 	}
 
 	private int getMaxDepth(OddBoard b) {
-		return 8 - b.countEmptyPositions()/10;
+		return 8 - b.countEmptyPositions() / 10;
 
 		// return Math.min(MAX_SEARCH_DEPTH, b.countEmptyPositions());
 	}
@@ -83,9 +80,10 @@ public class MTDPlayer extends Player {
 
 		int maxDepth = MAX_SEARCH_DEPTH;
 
-		// TODO MTD(f) needs a “first guess” as to where the minimax value will turn
+		// TODO MTD(f) needs a “first guess” as to where the minimax value will
+		// turn
 		// out to be -> Heuristic
-		int firstguess = MTCSimulation(root, 50);
+		int firstguess = MTCSimulation((OddBoard)root.clone(), 300);
 
 		for (int d = 1; d < maxDepth; d++) {
 
@@ -94,16 +92,12 @@ public class MTDPlayer extends Player {
 
 			log("****************** d=" + d);
 
-			res = MTDF(root, firstguess, d, hash);
+			firstguess = MTDF(root, firstguess, d, hash);
 
 			if (stop)
 				return -22;
 
-			firstguess = res.score;
-
-			updateBestMove(res.move);
-
-			log("IDeepening Result Score: " + res.score + "  - Rem:"
+			log("IDeepening Result Score: " + firstguess + "  - Rem:"
 					+ root.countEmptyPositions() + "Max depth=" + d
 					+ "  **********");
 		}
@@ -115,46 +109,75 @@ public class MTDPlayer extends Player {
 		return firstguess;
 	}
 	
-	public void MTDCutOff(OddBoard root){
-		MoveScore res;
-		long hash = hash(root);
+	void getBestMove(OddBoard board) {
 
-		int d = getMaxDepth(root);
-		int firstguess = MTCSimulation(root, 500);
+		OddMove best = null;
+		int score = Integer.MIN_VALUE;
+		OddBoard b;
+		LinkedList<OddMove> moves = board.getValidMoves();
+		long h = hash(board);
+		int firstguess[] = new int[moves.size()];
+		long hash[] = new long[moves.size()];
 		
-		log("****************** d=" + d);
-		res = MTDF(root, firstguess, d, hash);
-		firstguess = res.score;
-		updateBestMove(res.move);
+		int dMax = MAX_SEARCH_DEPTH;
+		
+		// in case timout
+		updateBestMove( moves.get(R.nextInt(moves.size())));
+		
+		// init
+		for (int i = 0; i < moves.size(); i++) {
+			hash[i] = incrementalHash(h, moves.get(i));
+			firstguess[i]=0;
+		}
 
-		log("MTDCutOff Score: " + res.score + "  - Rem:"
-				+ root.countEmptyPositions() + "Max depth=" + d
-				+ "  **********");
+		// start d=1
+		for (int d = 1; d < dMax; d++) {
+			log("IDeepening Rem:"
+					+ board.countEmptyPositions() + "Max depth=" + d
+					+ "  **********");
+			
+			for (int i = 0; i < moves.size(); i++) {
+				b = (OddBoard) board.clone();
+				b.move(moves.get(i));
+				firstguess[i] = MTDF(b, firstguess[i], d, hash[i]);
+				if (stop)
+					return;
+				if (firstguess[i] > score) {
+					score = firstguess[i];
+					best = moves.get(i);
+				}
+
+				// sem to update bestMove
+			}
+			if (stop)
+				return;
+			updateBestMove(best);
+			log("IDeepening Score: " + score +" **********"); 
+		}
 	}
 
-	public MoveScore MTDF(OddBoard root, int f, int d, long hash) {
+	public int MTDF(OddBoard root, int f, int d, long hash) {
 		int g = f;
 		int beta;
 		int upperBound = Integer.MAX_VALUE;
 		int lowerBound = Integer.MIN_VALUE;
-		MoveScore res = null;
 
 		while (lowerBound < upperBound) {
 			if (stop)
-				return null;
+				return -2222;
 
 			if (g == lowerBound) {
 				beta = g + 1;
 			} else {
 				beta = g;
 			}
-			res = AlphaBetaWithMemory(root, beta - 1, beta, d, hash);
-			log("AB, value="+beta);
+			g = AlphaBetaWithMemory(root, beta - 1, beta, d, hash);
+			
+			log2("AB, value=" + beta);
 
 			if (stop)
-				return null;
+				return -22;
 
-			g = res.score;
 			if (g < beta) {
 				upperBound = g;
 			} else {
@@ -162,29 +185,23 @@ public class MTDPlayer extends Player {
 			}
 		}
 		if (stop)
-			return null;
+			return -2222;
 
-		log("MTD returns=" + res.score);
-		return res;
+		log2("MTD returns=" + g);
+		return g;
 	}
 
-	private MoveScore AlphaBetaWithMemory(OddBoard board, int alpha, int beta,
-			int d, long h) {
+	private int AlphaBetaWithMemory(OddBoard board, int alpha, int beta, int d,
+			long h) {
 
-		// System.out.println("-----  AB --------");
+//		log2("-----  AB --------");
 
 		if (stop)
-			return null;
+			return 0;
 
-		MoveScore res;
-		OddMove bestMove = null;
 		int g, a, b;
 		State n = null;
-		// TODO depth? -- OK
 		OddBoard c;
-
-		// TODO ZOBric Keys -- OK
-		// long h = curHash;
 
 		// TODO transTable.lookup(node, depth) -- OK
 		/* Transposition table lookup */
@@ -198,29 +215,28 @@ public class MTDPlayer extends Player {
 				if (!OddBoard.equivalent(board, n.board)) {
 					System.out.println("COLLISION************************");
 				}
-				
-				if(n.depth>n.board.countEmptyPositions() && n.lowerbound!=MIN_SCORE && n.upperbound!=MAX_SCORE ){
-					log2("T rem<depth "+ " ** lower=" + n.lowerbound+ " ** upper=" + n.upperbound);
+
+				if (n.depth > n.board.countEmptyPositions()
+						&& n.lowerbound != MIN_SCORE
+						&& n.upperbound != MAX_SCORE) {
+					log2("T rem<depth " + " ** lower=" + n.lowerbound
+							+ " ** upper=" + n.upperbound);
 				}
 
 				if (n.lowerbound >= beta) {
 					// System.out.println("n.lower="+n.lowerbound);
 					log2("A=" + alpha + "*** B=" + beta + " TABLE up - d=" + d
 							+ " - score=" + n.lowerbound + "- depth=" + n.depth);
-					if (n.bestMove != null) {
-						log2(" ** Move=" + n.bestMove.toPrettyString());
-					}
-					return (new MoveScore(n.bestMove, n.lowerbound));
+
+					return n.lowerbound;
 				}
 				if (n.upperbound <= alpha) {
 					// System.out.println("n.upper="+n.upperbound);
 					log2("A=" + alpha + "*** B=" + beta + "  TABLE down - d="
 							+ d + " - score=" + n.upperbound + "- depth="
 							+ n.depth);
-					if (n.bestMove != null) {
-						log2(" ** Move=" + n.bestMove.toPrettyString());
-					}
-					return (new MoveScore(n.bestMove, n.upperbound));
+
+					return n.upperbound;
 				}
 			}
 		} else {
@@ -235,7 +251,6 @@ public class MTDPlayer extends Player {
 		// //////
 
 		LinkedList<OddMove> moves = board.getValidMoves();
-		
 
 		// TODO isterminal
 		if (isTerminal(board) || d == 0) {
@@ -252,7 +267,7 @@ public class MTDPlayer extends Player {
 			for (OddMove m : moves) {
 
 				if (stop)
-					return null;
+					return 0;
 
 				if (g >= beta) {
 					break;
@@ -260,21 +275,18 @@ public class MTDPlayer extends Player {
 				c = (OddBoard) board.clone();
 				c.move(m);
 
-				res = AlphaBetaWithMemory(c, a, beta, d - 1,
-						incrementalHash(h, m));
-
 				if (stop)
-					return null;
+					return 0;
 
-				if (res.score > g) {
-					bestMove = m;
-				}
-				g = Math.max(g, res.score);
+				g = Math.max(
+						g,
+						AlphaBetaWithMemory(c, a, beta, d - 1,
+								incrementalHash(h, m)));
 				a = Math.max(a, g);
 
-				/*if (g == MAX_SCORE) {
-					break;
-				}*/
+				/*
+				 * if (g == MAX_SCORE) { break; }
+				 */
 			}
 		}
 
@@ -286,7 +298,7 @@ public class MTDPlayer extends Player {
 			for (OddMove m : moves) {
 
 				if (stop)
-					return null;
+					return 0;
 
 				if (g <= alpha) {
 					break;
@@ -294,29 +306,23 @@ public class MTDPlayer extends Player {
 				c = (OddBoard) board.clone();
 				c.move(m);
 
-				res = AlphaBetaWithMemory(c, alpha, b, d - 1,
-						incrementalHash(h, m));
-
 				if (stop)
-					return null;
+					return 0;
 
-				if (res.score < g) {
-					bestMove = m;
-				}
-
-				g = Math.min(res.score, g);
+				g = Math.min(
+						AlphaBetaWithMemory(c, alpha, b, d - 1,
+								incrementalHash(h, m)), g);
 				b = Math.min(b, g);
 
-				/*if (g == MIN_SCORE) {
-					break;
-				}*/
+				/*
+				 * if (g == MIN_SCORE) { break; }
+				 */
 
 			}
 		}
 
 		/* Traditional transposition table storing of bounds */
 		n.depth = d;
-		n.bestMove = bestMove;
 		/* Fail low result implies an upper bound */
 		if (g <= alpha) {
 			n.upperbound = g;
@@ -342,15 +348,15 @@ public class MTDPlayer extends Player {
 		 * if (n.terminal) { log("HHHHH  n.upperbound=" + n.upperbound +
 		 * " *** n.lowerbound=" + n.lowerbound); }
 		 */
-		log2("A=" + alpha + "*** B=" + beta + " ** d=" + d + " *** score=" + g
-				+ " ** Move="
-				+ ((bestMove != null) ? bestMove.toPrettyString() : "NULL"));
-		
-		if(n.upperbound < n.lowerbound){
-			log2("n.depth="+n.depth+ "** n.rem="+n.board.countEmptyPositions()+ " ** lower=" + n.lowerbound+ " ** upper=" + n.upperbound);
+		log2("A=" + alpha + "*** B=" + beta + " ** d=" + d + " *** score=" + g);
+
+		if (n.upperbound < n.lowerbound) {
+			log2("n.depth=" + n.depth + "** n.rem="
+					+ n.board.countEmptyPositions() + " ** lower="
+					+ n.lowerbound + " ** upper=" + n.upperbound);
 		}
 
-		return new MoveScore(bestMove, g);
+		return g;
 	}
 
 	private int evaluate(State n) {
@@ -366,16 +372,17 @@ public class MTDPlayer extends Player {
 		 */
 
 	}
+
+	private int getSimNumber(OddBoard board) {
 	
-	private int getSimNumber(OddBoard board){
-		return (50 * board.countEmptyPositions())/8;
+		return (100 * board.countEmptyPositions()) / 61;
 	}
 
 	private int MTCSimulation(OddBoard board, int simulations) {
 		int score = 0;
 		OddBoard b;
 		LinkedList<OddMove> moves = board.getValidMoves();
-		int i=simulations;
+		int i = simulations;
 
 		while (i-- > 0) {
 			b = (OddBoard) board.clone();
@@ -384,22 +391,14 @@ public class MTDPlayer extends Player {
 				moves = b.getValidMoves();
 				b.move(moves.get(R.nextInt(moves.size())));
 			}
-			if (b.getWinner() == this.getColor()){
+			if (b.getWinner() == this.getColor()) {
 				score++;
-			}else{
+			} else {
 				score--;
 			}
 		}
-		return (2*score*MAX_SCORE)/(3*simulations);
+		return (2 * score * MAX_SCORE) / (3 * simulations);
 	}
-
-	/*
-	 * // TODO remove static OddMove getBestMove(OddBoard b) { OddBoard c;
-	 * OddMove bestM = null; int s; int bestScore = Integer.MIN_VALUE; for
-	 * (OddMove m : b.getValidMoves()) { c = (OddBoard) b.clone(); c.move(m); s
-	 * = MTDF(c); if (s > bestScore) { bestM = m; bestScore = s; } } return
-	 * bestM; }
-	 */
 
 	static boolean isTerminal(OddBoard node) {
 		return (node.countEmptyPositions() < 1);
@@ -473,9 +472,7 @@ public class MTDPlayer extends Player {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		} finally {
-			if (b.countEmptyPositions() > 20)
-				return chooseRandomMove(b);
-			return globalbestMove;
+			return getBestMove();
 		}
 
 		// int sc = iterativeDeepening(b);
@@ -534,10 +531,12 @@ public class MTDPlayer extends Player {
 	}
 
 	private void log(String str) {
-		if (bw != null) bw.println(str);
+		if (bw != null)
+			bw.println(str);
 	}
+
 	private void log2(String str) {
-//		if (bw != null) bw.println(str);
+		// if (bw != null) bw.println(str);
 	}
 
 	public Move chooseRandomMove(Board board) {
@@ -566,14 +565,15 @@ class State {
 	boolean MAXNODE;
 	boolean terminal;
 	OddBoard board;
-	OddMove bestMove;
+
+	// OddMove bestMove;
 
 	public State(OddBoard board, long hash, boolean max) {
 		this.hashValue = hash;
 		this.lowerbound = Integer.MIN_VALUE;
 		this.upperbound = Integer.MAX_VALUE;
 		this.depth = -1;
-		this.bestMove = null;
+		// this.bestMove = null;
 		terminal = MTDPlayer.isTerminal(board);
 		MAXNODE = max;
 		this.board = board;
@@ -629,6 +629,6 @@ class IterativeDeepening implements Runnable {
 	}
 
 	public synchronized void run() {
-		p.iterativeDeepening();
+		p.getBestMove(p.myboard);
 	}
 }
