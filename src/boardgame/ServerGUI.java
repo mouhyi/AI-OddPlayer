@@ -47,7 +47,8 @@ implements BoardPanel.BoardPanelListener  {
 	//"breakthrough.BTRandomPlayer", "breakthrough.BTFixedPlayer"
 	//"phootball.PhootballNullPlayer",
         "odd.OddRandomPlayer",
-        "odd.MTDPlayer"
+        "odd.MTDPlayer",
+        "odd.MTC"
     };
     private static final int BOARD_SIZE_X = odd.OddBoardPanel.SRAD * 3 *odd.OddBoardPanel.SCALE *
     											((odd.OddBoard.SIZE * 2 +1)+2);

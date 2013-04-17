@@ -78,3 +78,6 @@ formation should take place when it is the agent’s turn to play. Therefore, ou
 player forms a new tree every time the opponent make his move
 
 
+Learning Store  the win rate of games passing through that node,
+
+

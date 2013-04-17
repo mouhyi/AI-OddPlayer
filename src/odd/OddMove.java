@@ -76,4 +76,8 @@ public class OddMove extends Move {
   	public int getDestRow() {
   		return destRow;
   	}
+  	
+  	public static OddMove copy(OddMove m){
+  		return new OddMove( m.player, m.color, m.destRow, m.destCol);
+  	}
 }

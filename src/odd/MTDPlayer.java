@@ -1,10 +1,24 @@
 package odd;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import odd.OddBoard.Piece;
 
@@ -14,7 +28,7 @@ import boardgame.Player;
 
 public class MTDPlayer extends Player {
 
-	static int MAX_SEARCH_DEPTH = 13;
+	static int MAX_SEARCH_DEPTH = 61;
 	HashMap<Long, State> TranspositionTable;
 	// static OddMove bestMove;
 	// TODO AIPLAYEr -> dynamic player.color
@@ -24,24 +38,38 @@ public class MTDPlayer extends Player {
 	static final int VALID_ENTRIES = SIZE_DATA * SIZE_DATA - SIZE * (SIZE + 1);
 
 	static final int MAX_SCORE = 100;
-	static final int MIN_SCORE = -100;
+	static final int MIN_SCORE = -MAX_SCORE;
 
-	private static Zobrist zob = new Zobrist();
+	OddBoard myboard;
+	private boolean stop;
 
-	private static OddMove globalbestMove;
+	private Zobrist zob = new Zobrist();
 
-	protected static final int DEFAULT_TIMEOUT = 5000;
+	private OddMove globalbestMove;
+
+	protected static final int DEFAULT_TIMEOUT = 4500;
 	private TimerTask timeoutTask;
 	private Timer timer = new Timer();
 	private int timeout = DEFAULT_TIMEOUT;
+	private Semaphore sem;
+	Thread curT;
+	PrintStream bw;
+	Random R;
+	private Object monitor = new Object();
 
 	public MTDPlayer() {
 		super("MTDPlayer");
 		TranspositionTable = new HashMap<Long, State>();
+		stop = false;
+		sem = new Semaphore(1);
+		initLog();
+		R = new Random();
+
 	}
 
 	private int getMaxDepth(OddBoard b) {
-		return MAX_SEARCH_DEPTH;
+		return 8 - b.countEmptyPositions()/10;
+
 		// return Math.min(MAX_SEARCH_DEPTH, b.countEmptyPositions());
 	}
 
@@ -53,28 +81,55 @@ public class MTDPlayer extends Player {
 		MoveScore res;
 		long hash = hash(root);
 
-		int maxDepth = getMaxDepth(root);
+		int maxDepth = MAX_SEARCH_DEPTH;
 
-		System.out.println("Iterative Deepening");
-
-		// TODO MTD(f) needs a “first guess” as to where the minimax value will
-		// turn
+		// TODO MTD(f) needs a “first guess” as to where the minimax value will turn
 		// out to be -> Heuristic
-		int firstguess = 0;
+		int firstguess = MTCSimulation(root, 50);
 
 		for (int d = 1; d < maxDepth; d++) {
 
-			System.out.println("MTD, d=" + d);
+			if (stop)
+				return -22;
+
+			log("****************** d=" + d);
 
 			res = MTDF(root, firstguess, d, hash);
-			firstguess = res.score;
-			globalbestMove = res.move;
 
-			// System.out.println(globalbestMove.toPrettyString());
+			if (stop)
+				return -22;
+
+			firstguess = res.score;
+
+			updateBestMove(res.move);
+
+			log("IDeepening Result Score: " + res.score + "  - Rem:"
+					+ root.countEmptyPositions() + "Max depth=" + d
+					+ "  **********");
 		}
 		// TODO if times_up() then break;
 
+		if (stop)
+			return -22;
+
 		return firstguess;
+	}
+	
+	public void MTDCutOff(OddBoard root){
+		MoveScore res;
+		long hash = hash(root);
+
+		int d = getMaxDepth(root);
+		int firstguess = MTCSimulation(root, 500);
+		
+		log("****************** d=" + d);
+		res = MTDF(root, firstguess, d, hash);
+		firstguess = res.score;
+		updateBestMove(res.move);
+
+		log("MTDCutOff Score: " + res.score + "  - Rem:"
+				+ root.countEmptyPositions() + "Max depth=" + d
+				+ "  **********");
 	}
 
 	public MoveScore MTDF(OddBoard root, int f, int d, long hash) {
@@ -85,12 +140,20 @@ public class MTDPlayer extends Player {
 		MoveScore res = null;
 
 		while (lowerBound < upperBound) {
+			if (stop)
+				return null;
+
 			if (g == lowerBound) {
 				beta = g + 1;
 			} else {
 				beta = g;
 			}
 			res = AlphaBetaWithMemory(root, beta - 1, beta, d, hash);
+			log("AB, value="+beta);
+
+			if (stop)
+				return null;
+
 			g = res.score;
 			if (g < beta) {
 				upperBound = g;
@@ -98,6 +161,10 @@ public class MTDPlayer extends Player {
 				lowerBound = g;
 			}
 		}
+		if (stop)
+			return null;
+
+		log("MTD returns=" + res.score);
 		return res;
 	}
 
@@ -105,6 +172,9 @@ public class MTDPlayer extends Player {
 			int d, long h) {
 
 		// System.out.println("-----  AB --------");
+
+		if (stop)
+			return null;
 
 		MoveScore res;
 		OddMove bestMove = null;
@@ -121,12 +191,35 @@ public class MTDPlayer extends Player {
 		if (TranspositionTable.containsKey(h)) {
 			n = TranspositionTable.get(h);
 			if (n.depth >= d || n.terminal) {
-				System.out.println("LOOKUP -> YES");
+				// System.out.println("LOOKUP -> YES, d="+d);
+
+				// System.out.println("n.empty:"+n.board.countEmptyPositions()+" -- n.depth="+n.depth);
+
+				if (!OddBoard.equivalent(board, n.board)) {
+					System.out.println("COLLISION************************");
+				}
+				
+				if(n.depth>n.board.countEmptyPositions() && n.lowerbound!=MIN_SCORE && n.upperbound!=MAX_SCORE ){
+					log2("T rem<depth "+ " ** lower=" + n.lowerbound+ " ** upper=" + n.upperbound);
+				}
 
 				if (n.lowerbound >= beta) {
+					// System.out.println("n.lower="+n.lowerbound);
+					log2("A=" + alpha + "*** B=" + beta + " TABLE up - d=" + d
+							+ " - score=" + n.lowerbound + "- depth=" + n.depth);
+					if (n.bestMove != null) {
+						log2(" ** Move=" + n.bestMove.toPrettyString());
+					}
 					return (new MoveScore(n.bestMove, n.lowerbound));
 				}
 				if (n.upperbound <= alpha) {
+					// System.out.println("n.upper="+n.upperbound);
+					log2("A=" + alpha + "*** B=" + beta + "  TABLE down - d="
+							+ d + " - score=" + n.upperbound + "- depth="
+							+ n.depth);
+					if (n.bestMove != null) {
+						log2(" ** Move=" + n.bestMove.toPrettyString());
+					}
 					return (new MoveScore(n.bestMove, n.upperbound));
 				}
 			}
@@ -142,10 +235,13 @@ public class MTDPlayer extends Player {
 		// //////
 
 		LinkedList<OddMove> moves = board.getValidMoves();
+		
 
 		// TODO isterminal
-		if (d == 0 || isTerminal(board)) {
+		if (isTerminal(board) || d == 0) {
 			g = evaluate(n); /* leaf node */
+			n.lowerbound = g;
+			n.upperbound = g;
 		}
 
 		else if (n.MAXNODE) {
@@ -154,6 +250,10 @@ public class MTDPlayer extends Player {
 			a = alpha; /* save original alpha value */
 
 			for (OddMove m : moves) {
+
+				if (stop)
+					return null;
+
 				if (g >= beta) {
 					break;
 				}
@@ -162,17 +262,19 @@ public class MTDPlayer extends Player {
 
 				res = AlphaBetaWithMemory(c, a, beta, d - 1,
 						incrementalHash(h, m));
+
+				if (stop)
+					return null;
+
 				if (res.score > g) {
 					bestMove = m;
-					// System.out.println("update- g="+g+"  - new="+res.score);
-
 				}
 				g = Math.max(g, res.score);
 				a = Math.max(a, g);
 
-				if (res.score == MAX_SCORE) {
+				/*if (g == MAX_SCORE) {
 					break;
-				}
+				}*/
 			}
 		}
 
@@ -182,6 +284,10 @@ public class MTDPlayer extends Player {
 			b = beta; /* save original beta value */
 
 			for (OddMove m : moves) {
+
+				if (stop)
+					return null;
+
 				if (g <= alpha) {
 					break;
 				}
@@ -191,19 +297,19 @@ public class MTDPlayer extends Player {
 				res = AlphaBetaWithMemory(c, alpha, b, d - 1,
 						incrementalHash(h, m));
 
+				if (stop)
+					return null;
+
 				if (res.score < g) {
 					bestMove = m;
-					// System.out.println("update 222- g="+g+"  - new="+res.score);
-
 				}
 
 				g = Math.min(res.score, g);
-
 				b = Math.min(b, g);
 
-				if (res.score == MIN_SCORE) {
+				/*if (g == MIN_SCORE) {
 					break;
-				}
+				}*/
 
 			}
 		}
@@ -221,6 +327,7 @@ public class MTDPlayer extends Player {
 		 * window
 		 */
 		if (g > alpha && g < beta) {
+			System.out.println("Never");
 			n.lowerbound = g;
 			n.upperbound = g;
 			// store n.lowerbound, n.upperbound;
@@ -230,13 +337,60 @@ public class MTDPlayer extends Player {
 			n.lowerbound = g;
 			// store n.lowerbound;
 		}
+
+		/*
+		 * if (n.terminal) { log("HHHHH  n.upperbound=" + n.upperbound +
+		 * " *** n.lowerbound=" + n.lowerbound); }
+		 */
+		log2("A=" + alpha + "*** B=" + beta + " ** d=" + d + " *** score=" + g
+				+ " ** Move="
+				+ ((bestMove != null) ? bestMove.toPrettyString() : "NULL"));
+		
+		if(n.upperbound < n.lowerbound){
+			log2("n.depth="+n.depth+ "** n.rem="+n.board.countEmptyPositions()+ " ** lower=" + n.lowerbound+ " ** upper=" + n.upperbound);
+		}
+
 		return new MoveScore(bestMove, g);
 	}
 
 	private int evaluate(State n) {
-		int k = (n.terminal) ? 1 : 2;
-		return (n.board.getWinner() == this.getColor()) ? MAX_SCORE/k : MIN_SCORE/k;
+		if (n.terminal) {
+			return (n.board.getWinner() == this.getColor()) ? MAX_SCORE
+					: MIN_SCORE;
+		}
+		return MTCSimulation(n.board, getSimNumber(n.board));
 
+		/*
+		 * int k = (n.terminal) ? 1 : 2; return (n.board.getWinner() ==
+		 * this.getColor()) ? MAX_SCORE / k : MIN_SCORE / k;
+		 */
+
+	}
+	
+	private int getSimNumber(OddBoard board){
+		return (50 * board.countEmptyPositions())/8;
+	}
+
+	private int MTCSimulation(OddBoard board, int simulations) {
+		int score = 0;
+		OddBoard b;
+		LinkedList<OddMove> moves = board.getValidMoves();
+		int i=simulations;
+
+		while (i-- > 0) {
+			b = (OddBoard) board.clone();
+
+			while (!isTerminal(b)) {
+				moves = b.getValidMoves();
+				b.move(moves.get(R.nextInt(moves.size())));
+			}
+			if (b.getWinner() == this.getColor()){
+				score++;
+			}else{
+				score--;
+			}
+		}
+		return (2*score*MAX_SCORE)/(3*simulations);
 	}
 
 	/*
@@ -261,21 +415,21 @@ public class MTDPlayer extends Player {
 	 * (n.depth >= d) { return n; } if (n.terminal) { return n; } return null; }
 	 */
 
-	static long hash(OddBoard board) {
+	long hash(OddBoard board) {
 		long result = 0l;
-		for (int row = 0; row < SIZE_DATA; row++) {
-			for (int col = 0; col < SIZE_DATA; col++) {
-				if (board.getBoardData()[row][col] == Piece.WP) {
-					result ^= zob.getKey(row, col, 0);
-				} else if (board.getBoardData()[row][col] == Piece.BP) {
-					result ^= zob.getKey(row, col, 1);
+		for (int i = -SIZE; i <= SIZE; i++) {
+			for (int j = -SIZE; j <= SIZE; j++) {
+				if (board.getPieceAt(i, j) == Piece.WP) {
+					result ^= zob.getKey(i + SIZE, j + SIZE, 0);
+				} else if (board.getPieceAt(i, j) == Piece.BP) {
+					result ^= zob.getKey(i + SIZE, j + SIZE, 1);
 				}
 			}
 		}
 		return result;
 	}
 
-	static long incrementalHash(long hash, OddMove move) {
+	long incrementalHash(long hash, OddMove move) {
 		int color = move.getColor() == Piece.WP ? 0 : 1;
 		hash ^= zob.getKey(move.getDestRow() + SIZE, move.getDestCol() + SIZE,
 				color);
@@ -285,25 +439,68 @@ public class MTDPlayer extends Player {
 
 	}
 
+	private void updateBestMove(OddMove m) {
+		globalbestMove = m;
+	}
+
+	private OddMove getBestMove() {
+		return OddMove.copy(globalbestMove);
+	}
+
+	public void iterativeDeepening() {
+		iterativeDeepening(this.myboard);
+	}
+
 	@Override
 	public Move chooseMove(Board board) {
-		System.out.println("Choose Move");
+
+		try {
+			sem.acquire();
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
+
 		OddBoard b = (OddBoard) board;
-		OddMove m;
-		// TODO while time is not up call dtd
-		iterativeDeepening(b);
-		// if time up
-		return globalbestMove;
+		this.myboard = b;
+
+		stop = false;
+		resetTimer();
+
+		try {
+			synchronized (monitor) {
+				monitor.wait();
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			if (b.countEmptyPositions() > 20)
+				return chooseRandomMove(b);
+			return globalbestMove;
+		}
+
+		// int sc = iterativeDeepening(b);
+		// log(globalbestMove.toPrettyString());
+		// if sem.signal -- while timer notify
+		// System.out.println("Score:"+sc + " ----- d="+
+		// (61-b.countEmptyPositions()));
+		// if (b.countEmptyPositions() > getMaxDepth(b)) return
+		// chooseRandomMove(b);
+		// return globalbestMove;
 	}
 
 	private void resetTimer() {
 		cancelTimeout();
+		stop = false;
+
 		timeoutTask = new TimerTask() {
 			public void run() {
 				timeOut();
 			}
 		};
 		timer.schedule(timeoutTask, timeout);
+
+		this.curT = (new Thread(new IterativeDeepening(this)));
+		this.curT.start();
 	}
 
 	// So the GUI can cancel the timeout
@@ -314,7 +511,49 @@ public class MTDPlayer extends Player {
 	}
 
 	private synchronized void timeOut() {
+		stop = true;
+		synchronized (monitor) {
+			monitor.notify();
+		}
+		this.curT.interrupt();
+		while (curT.isAlive())
+			;
+		sem.release();
 
+		log("Timeout");
+	}
+
+	private void initLog() {
+		File logFile = new File("logs/myOut0.txt");
+		try {
+			bw = new PrintStream(new FileOutputStream(logFile));
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	private void log(String str) {
+		if (bw != null) bw.println(str);
+	}
+	private void log2(String str) {
+//		if (bw != null) bw.println(str);
+	}
+
+	public Move chooseRandomMove(Board board) {
+		OddBoard pb = (OddBoard) board;
+		LinkedList<OddMove> validMoves = pb.getValidMoves();
+		// if (validMoves.isEmpty()) return null;
+		// else
+		return validMoves.get(R.nextInt(validMoves.size()));
+	}
+
+	public int playRandomly(OddBoard b) {
+		while (!isTerminal(b)) {
+			b.move(chooseRandomMove(b));
+		}
+		return (b.getWinner() == this.getColor()) ? MAX_SCORE / 2
+				: MIN_SCORE / 2;
 	}
 }
 
@@ -378,4 +617,18 @@ class Zobrist {
 		return zobristKey[i][j][k];
 	}
 
+}
+
+class IterativeDeepening implements Runnable {
+
+	private MTDPlayer p;
+
+	public IterativeDeepening(MTDPlayer p) {
+		super();
+		this.p = p;
+	}
+
+	public synchronized void run() {
+		p.iterativeDeepening();
+	}
 }
