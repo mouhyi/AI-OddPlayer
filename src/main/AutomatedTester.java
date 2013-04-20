@@ -52,8 +52,8 @@ public class AutomatedTester {
 			server.start();
 
 			// TODO: Change the constructs below
-			clients.add(new Thread(new Client(new MTDPlayer(), DEFAULT_HOST, DEFAULT_PORT)));
-			clients.add(new Thread(new Client(new odd.OddRandomPlayer(), DEFAULT_HOST, DEFAULT_PORT)));
+			clients.add(new Thread(new Client(new odd.UCT11(), DEFAULT_HOST, DEFAULT_PORT)));
+			clients.add(new Thread(new Client(new odd.UCTRAVE(), DEFAULT_HOST, DEFAULT_PORT)));
 			Collections.shuffle(clients);	// Randomize who's player 1/2
 			clients.get(0).start();
 			try {

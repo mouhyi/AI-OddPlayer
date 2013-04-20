@@ -81,3 +81,8 @@ player forms a new tree every time the opponent make his move
 Learning Store  the win rate of games passing through that node,
 
 
+
+Move Ordering
+A good move ordering causes the search window to become narrower more quickly and results in more cutoffs than the basic Alpha Beta search. To achieve that we can use the results of the previous shallower searches especially when using the iterative deepening method. Another approach is to use the transposition table, this is discussed in further detail when discussing the memory-enhanced test algorithm (MTD). [2]
+
+

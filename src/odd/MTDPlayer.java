@@ -1,24 +1,15 @@
 package odd;
 
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import odd.OddBoard.Piece;
 
@@ -44,7 +35,7 @@ public class MTDPlayer extends Player {
 
 	private OddMove globalbestMove;
 
-	protected static final int DEFAULT_TIMEOUT = 4500;
+	protected static final int DEFAULT_TIMEOUT = 4000;
 	private TimerTask timeoutTask;
 	private Timer timer = new Timer();
 	private int timeout = DEFAULT_TIMEOUT;
@@ -212,7 +203,7 @@ public class MTDPlayer extends Player {
 
 				// System.out.println("n.empty:"+n.board.countEmptyPositions()+" -- n.depth="+n.depth);
 
-				if (!OddBoard.equivalent(board, n.board)) {
+				if (!MTDPlayer.equivalent(board, n.board)) {
 					System.out.println("COLLISION************************");
 				}
 
@@ -439,11 +430,11 @@ public class MTDPlayer extends Player {
 	}
 
 	private void updateBestMove(OddMove m) {
-		globalbestMove = m;
+		globalbestMove = OddMove.copy(m);;
 	}
 
 	private OddMove getBestMove() {
-		return OddMove.copy(globalbestMove);
+		return globalbestMove;
 	}
 
 	public void iterativeDeepening() {
@@ -531,8 +522,7 @@ public class MTDPlayer extends Player {
 	}
 
 	private void log(String str) {
-		if (bw != null)
-			bw.println(str);
+//		if (bw != null) bw.println(str);
 	}
 
 	private void log2(String str) {
@@ -551,8 +541,23 @@ public class MTDPlayer extends Player {
 		while (!isTerminal(b)) {
 			b.move(chooseRandomMove(b));
 		}
-		return (b.getWinner() == this.getColor()) ? MAX_SCORE / 2
-				: MIN_SCORE / 2;
+		return (b.getWinner() == this.getColor()) ? MAX_SCORE
+				: MIN_SCORE ;
+	}
+	
+	// Edit
+	public static boolean equivalent(OddBoard b1, OddBoard b2) {
+		for (int i = -SIZE; i <= SIZE; i++) {
+			for (int j = -SIZE; j <= SIZE; j++) {
+				if (b1.getPieceAt(i, j) != b2.getPieceAt(i, j)) {
+					return false;
+				}
+			}
+		}
+		if(b1.getTurn() != b2.getTurn()){
+			return false;
+		}
+		return true;
 	}
 }
 

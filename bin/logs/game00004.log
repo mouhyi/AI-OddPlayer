@@ -1,0 +1,13 @@
+# Server version 0.05 running on mouhyi-laptop:8123
+# Game ID: 4
+# Board class: odd.OddBoard
+# Timeout: 5000
+# Date: Thu Apr 18 16:37:29 EDT 2013
+# Player 1: Player1, 'MTDPlayer', running on localhost
+# Player 2: Player2, 'UCT', running on localhost
+START Player1 MTDPlayer
+START Player2 UCT
+1 BLACK 4 3
+GAMEOVER TIMEOUT Player2
+WINNER Player1
+# Game ended: Thu Apr 18 16:37:38 EDT 2013

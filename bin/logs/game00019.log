@@ -1,0 +1,12 @@
+# Server version 0.05 running on mouhyi-laptop:8126
+# Game ID: 19
+# Board class: odd.OddBoard
+# Timeout: 8000
+# Date: Fri Apr 19 03:59:43 EDT 2013
+# Player 1: Player1, 'UCT', running on localhost
+# Player 2: Player2, 'UCTRAVE', running on localhost
+START Player1 UCT
+START Player2 UCTRAVE
+1 WHITE 4 3
+2 BLACK -3 -4
+1 WHITE 2 -2

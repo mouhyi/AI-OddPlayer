@@ -117,8 +117,6 @@ public class OddBoard extends Board {
 			determineWinner();
 		else
 			turn = (turn == 1) ? 2 : 1;
-		// EDIT
-		moveCount++;
 	}
 
 	/** Get the number of turns played. */
@@ -315,19 +313,6 @@ public class OddBoard extends Board {
 		return moves;
 	}
 
-	// Edit
-	public static boolean equivalent(OddBoard b1, OddBoard b2) {
-		for (int i = -SIZE; i <= SIZE; i++) {
-			for (int j = -SIZE; j <= SIZE; j++) {
-				if (b1.getPieceAt(i, j) != b2.getPieceAt(i, j)) {
-					return false;
-				}
-			}
-		}
-		if(b1.getTurn() != b2.getTurn()){
-			return false;
-		}
-		return true;
-	}
+
 
 } // End class Board
