@@ -50,8 +50,9 @@ implements BoardPanel.BoardPanelListener  {
         "odd.MTDPlayer",
         "odd.MTC",
         "odd.UCT",
-        "odd.UCTRAVE",
-        "odd.Guatham"
+        "odd.Mouhyi",
+        "odd.Guatham",
+        "odd.Gordon"
     };
     private static final int BOARD_SIZE_X = odd.OddBoardPanel.SRAD * 3 *odd.OddBoardPanel.SCALE *
     											((odd.OddBoard.SIZE * 2 +1)+2);

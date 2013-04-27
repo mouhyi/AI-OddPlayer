@@ -17,17 +17,18 @@ import boardgame.Move;
 import boardgame.Player;
 
 /*
+ * UCT RAVE
  * Used the MTC implementation from http://mcts.ai/code/java.html
  */
 
-public class UCTRAVE extends Player {
+public class Mouhyi extends Player {
 
 	boolean stop = false;
 
 	private OddMove bestMove;
 	int[][][] moveFreq;
 
-	protected static final int DEFAULT_TIMEOUT = 3200;
+	protected static final int DEFAULT_TIMEOUT = 3300;
 	private TimerTask timeoutTask;
 	private Timer timer = new Timer();
 	private int timeout = DEFAULT_TIMEOUT;
@@ -37,13 +38,13 @@ public class UCTRAVE extends Player {
 	private Object monitor;
 	OddBoard myboard;
 
-	TreeNode11 tn;
+	TreeNodeRAVE tn;
 
-	public UCTRAVE() {
-		super("UCTRAVE");
+	public Mouhyi() {
+		super("Mouhyi");
 		monitor = new Object();
 		initLog();
-		moveFreq = new int[TreeNode11.SIZE_DATA][TreeNode11.SIZE_DATA][2];
+		moveFreq = new int[TreeNodeRAVE.SIZE_DATA][TreeNodeRAVE.SIZE_DATA][2];
 	}
 
 	@Override
@@ -52,7 +53,7 @@ public class UCTRAVE extends Player {
 		// init vars
 		this.myboard = (OddBoard) board;
 		stop = false;
-		TreeNode11.totalSims = 0;
+		TreeNodeRAVE.totalSims = 0;
 
 		resetTimer();
 		// System.out.println("------------Choose Move-------");
@@ -88,9 +89,10 @@ public class UCTRAVE extends Player {
 		};
 		timer.schedule(timeoutTask, timeout);
 
-		tn = new TreeNode11(this.myboard, this, null, null);
+		tn = new TreeNodeRAVE(this.myboard, this, null, null);
 		this.curT = (new Thread(tn));
 		this.curT.start();
+		Thread.currentThread().setPriority(Thread.MAX_PRIORITY);
 	}
 
 	// So the GUI can cancel the timeout
@@ -108,7 +110,7 @@ public class UCTRAVE extends Player {
 		// find best move
 		int max = -1;
 		if(tn.children.values().isEmpty()) System.out.println("Empty childs");
-		for (Action11 child : tn.children.values()) {
+		for (Action child : tn.children.values()) {
 			if (child.nextState.totalVisits > max) {
 				max = child.nextState.totalVisits;
 				updateBestMove(child.move);
@@ -121,11 +123,11 @@ public class UCTRAVE extends Player {
 
 		// this.curT.interrupt();
 
-		log("Sims= " + TreeNode11.totalSims);
+		log("Sims= " + TreeNodeRAVE.totalSims);
 	}
 
 	private void initLog() {
-		File logFile = new File("logs/UCTRAVE.txt");
+		File logFile = new File("logs/Mouhyi.txt");
 		try {
 			bw = new PrintStream(new FileOutputStream(logFile));
 		} catch (FileNotFoundException e) {
@@ -140,7 +142,7 @@ public class UCTRAVE extends Player {
 
 }
 
-class TreeNode11 implements Runnable {
+class TreeNodeRAVE implements Runnable {
 
 	static Random r = new Random();
 	static double epsilon = 1e-6;
@@ -149,23 +151,25 @@ class TreeNode11 implements Runnable {
 	static int totalSims = 0;
 	static double EXPLORATION = 0.4;
 
-	HashMap<Integer, Action11> children;
+	HashMap<Integer, Action> children;
 
 	OddBoard board;
-	UCTRAVE player;
+	Mouhyi player;
 	OddMove parentMove;
-	TreeNode11 parent;
+	TreeNodeRAVE parent;
 	int totalVisits;
 	
 	// parameters
 	private static double b=5;
 	private static final double k=50000;
+	// fix Timer, Sysout time
+	// increase k with time
 
 	static final int SIZE = 4;
 	static final int SIZE_DATA = 2 * SIZE + 1;
 
-	public TreeNode11(OddBoard board, UCTRAVE player, OddMove parentMove,
-			TreeNode11 parent) {
+	public TreeNodeRAVE(OddBoard board, Mouhyi player, OddMove parentMove,
+			TreeNodeRAVE parent) {
 		super();
 		this.totalVisits = 0;
 		this.board = board;
@@ -176,16 +180,16 @@ class TreeNode11 implements Runnable {
 
 	public synchronized void run() {
 		while (!player.stop) {
-			selectAction11();
+			selectAction();
 		}
 	}
 
-	public void selectAction11() {
+	public void selectAction() {
 		double value;
 		// selection
-		List<TreeNode11> visited = new LinkedList<TreeNode11>();
+		List<TreeNodeRAVE> visited = new LinkedList<TreeNodeRAVE>();
 		List<OddMove> moves = new LinkedList<OddMove>();
-		TreeNode11 cur = this;
+		TreeNodeRAVE cur = this;
 		visited.add(this);
 		while (!cur.isLeaf()) {
 			cur = cur.select();
@@ -200,7 +204,7 @@ class TreeNode11 implements Runnable {
 
 			// expansion
 			cur.expand();
-			TreeNode11 newNode = cur.select();
+			TreeNodeRAVE newNode = cur.select();
 			visited.add(newNode);
 			moves.add(newNode.parentMove);
 
@@ -208,7 +212,7 @@ class TreeNode11 implements Runnable {
 			value = newNode.rollOut(moves);
 		}
 		// propagation
-		TreeNode11 node;
+		TreeNodeRAVE node;
 		for (int i = 0; i < visited.size()-1; i++) {
 			node = visited.get(i);
 			node.updateStats(value, moves.get(i));
@@ -219,23 +223,23 @@ class TreeNode11 implements Runnable {
 	public void expand() {
 		OddBoard b;
 		LinkedList<OddMove> moves = this.board.getValidMoves();
-		children = new HashMap<Integer, Action11>();
+		children = new HashMap<Integer, Action>();
 		for (OddMove m: moves) {
 			b = (OddBoard) this.board.clone();
 			b.move(m);
-			children.put(hash(m), new Action11(new TreeNode11(b, this.player, m, this)));
+			children.put(hash(m), new Action(new TreeNodeRAVE(b, this.player, m, this)));
 		}
 	}
 
-	private TreeNode11 select() {
+	private TreeNodeRAVE select() {
 		return (this.board.getTurn() == this.player.getColor()) ? selectMax()
 				: selectMin();
 	}
 
-	private TreeNode11 selectMax() {
-		TreeNode11 selected = null;
+	private TreeNodeRAVE selectMax() {
+		TreeNodeRAVE selected = null;
 		double bestValue = Double.MIN_VALUE;
-		for (Action11 a : children.values()) {
+		for (Action a : children.values()) {
 			double uctValue = this.getRAVEvalue(a) + EXPLORATION
 					* Math.sqrt(Math.log(totalVisits + 1) / (a.MCVisits + epsilon))
 					+ r.nextDouble() * epsilon;
@@ -250,10 +254,10 @@ class TreeNode11 implements Runnable {
 		return selected;
 	}
 
-	private TreeNode11 selectMin() {
-		TreeNode11 selected = null;
+	private TreeNodeRAVE selectMin() {
+		TreeNodeRAVE selected = null;
 		double bestValue = Double.MAX_VALUE;
-		for (Action11 a : children.values()) {
+		for (Action a : children.values()) {
 			double uctValue = this.getRAVEvalue(a) - EXPLORATION
 					* Math.sqrt(Math.log(totalVisits + 1) / (a.MCVisits + epsilon))
 					+ r.nextDouble() * epsilon;
@@ -302,7 +306,7 @@ class TreeNode11 implements Runnable {
 		return (node.countEmptyPositions() < 1);
 	}
 
-	public double rollOut( List<OddMove> Action11s) {
+	public double rollOut( List<OddMove> actions) {
 		totalSims++;
 		OddMove m;
 		OddBoard b = (OddBoard) this.board.clone();
@@ -310,7 +314,7 @@ class TreeNode11 implements Runnable {
 		while (!isTerminal(b)) {
 			m = randomMove(b);
 			b.move(m);
-			Action11s.add(m);
+			actions.add(m);
 		}
 		return evaluateTerminal(b);
 	}
@@ -322,17 +326,17 @@ class TreeNode11 implements Runnable {
 	public void updateStats(double value, OddMove m) {
 		if (!player.stop) {
 			totalVisits++;
-			Action11 a = children.get(hash(m));
+			Action a = children.get(hash(m));
 			a.MCValue += value;
 			a.MCVisits++;
 		}
 	}
 
 	private void updateAMAF(double value, List<OddMove> moves, int level) {
-		Action11 a;
+		Action a;
 		OddMove m;
 		if (!player.stop) {
-			// update very subsequent Action11 of the simulation with the same colour to play
+			// update very subsequent action of the simulation with the same colour to play
 			for (int i = level; i < moves.size(); i++) {
 				if (i % 2 == level % 2) {
 					m = moves.get(i);
@@ -346,7 +350,7 @@ class TreeNode11 implements Runnable {
 		}
 	}
 	
-	private double getRAVEvalue(Action11 a){
+	private double getRAVEvalue(Action a){
 		double b = getBeta(a);
 		double MCscore = (a.MCValue) / (a.MCVisits + epsilon);
 		double AMAFscore = (a.AMAFvalue) / (a.AMAFvisits + epsilon);
@@ -354,11 +358,11 @@ class TreeNode11 implements Runnable {
 		return ( (1-b)*MCscore + b*AMAFscore);
 	}
 	
-	private double getBeta2(Action11 a){
+	private double getBeta2(Action a){
 		return (a.AMAFvalue/ (a.MCValue + a.AMAFvalue + 4*a.MCValue*a.AMAFvalue*b*b));
 	}
 	
-	private double getBeta(Action11 a){
+	private double getBeta(Action a){
 		return Math.sqrt(k/(3*this.totalVisits + k));
 	}
 
@@ -367,12 +371,12 @@ class TreeNode11 implements Runnable {
 	}
 }
 
-class Action11{
+class Action{
 	public OddMove move;
 	int MCVisits, MCValue;
 	int AMAFvisits, AMAFvalue;
-	TreeNode11 nextState;
-	public Action11(TreeNode11 nextState) {
+	TreeNodeRAVE nextState;
+	public Action(TreeNodeRAVE nextState) {
 		this.MCVisits = 0;
 		this.MCValue = 0;
 		this.AMAFvisits = 0;

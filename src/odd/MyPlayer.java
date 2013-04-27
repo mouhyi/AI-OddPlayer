@@ -19,6 +19,7 @@ import boardgame.Move;
 import boardgame.Player;
 
 /*
+ * UCT - exploration factor= 0.4
  * Used the MTC implementation from http://mcts.ai/code/java.html
  */
 

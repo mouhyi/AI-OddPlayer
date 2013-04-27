@@ -24,12 +24,10 @@ import boardgame.Player;
 
 public class UCT extends Player {
 
-	boolean stop = false;
-
 	private OddMove bestMove;
 	int[][][] moveFreq;
 
-	protected static final int DEFAULT_TIMEOUT = 3000;
+	protected static final int DEFAULT_TIMEOUT = 4000;
 	private TimerTask timeoutTask;
 	private Timer timer = new Timer();
 	private int timeout = DEFAULT_TIMEOUT;
@@ -38,37 +36,35 @@ public class UCT extends Player {
 	Random R;
 	private Object monitor;
 	OddBoard myboard;
-	
+
 	TreeNode tn;
 
 	public UCT() {
 		super("UCT");
 		monitor = new Object();
 		initLog();
-		moveFreq = new int [TreeNode.SIZE_DATA][TreeNode.SIZE_DATA][2];
+		moveFreq = new int[TreeNode.SIZE_DATA][TreeNode.SIZE_DATA][2];
 	}
 
 	@Override
 	public Move chooseMove(Board board) {
-		
+
 		// init vars
 		this.myboard = (OddBoard) board;
-		stop = false;
-		TreeNode.totalSims = 0;
-		
-		resetTimer();
-		System.out.println("------------Choose Move-------");
+		long startTime = System.currentTimeMillis();
 
-		try {
-			synchronized (monitor) {
-				monitor.wait();
-			}
-			System.out.println("******************");
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		} finally {
-			return getBestMove();
+		TreeNode.totalSims = 0;
+
+		this.tn = new TreeNode(this.myboard, this, null);
+		tn.stop = false;
+
+		System.out.println("sleep " + (System.currentTimeMillis() - startTime));
+
+		while (System.currentTimeMillis() - startTime < DEFAULT_TIMEOUT) {
+			tn.selectAction();
 		}
+		return getBestMove();
+
 	}
 
 	void updateBestMove(OddMove m) {
@@ -76,12 +72,20 @@ public class UCT extends Player {
 	}
 
 	OddMove getBestMove() {
-		return bestMove;
+		int max = 0;
+		OddMove best = null;
+		for (TreeNode child : tn.children) {
+			if (child.nVisits > max) {
+				max = child.nVisits;
+				best = child.parentMove;
+			}
+		}
+		return best;
 	}
 
 	private void resetTimer() {
 		cancelTimeout();
-		stop = false;
+		tn.stop = false;
 
 		timeoutTask = new TimerTask() {
 			public void run() {
@@ -103,10 +107,9 @@ public class UCT extends Player {
 	}
 
 	private synchronized void timeOut() {
-		stop = true;
-		
-		
-//		log("Interrupt");
+		tn.stop = true;
+
+		// log("Interrupt");
 
 		// find best move
 		int max = 0;
@@ -116,14 +119,14 @@ public class UCT extends Player {
 				updateBestMove(child.parentMove);
 			}
 		}
-//		log("Done");
+		// log("Done");
 		synchronized (monitor) {
 			monitor.notify();
 		}
-		
-		//this.curT.interrupt();
 
-//		log("Sims= " + TreeNode.totalSims);
+		// this.curT.interrupt();
+
+		// log("Sims= " + TreeNode.totalSims);
 	}
 
 	private void initLog() {
@@ -137,7 +140,8 @@ public class UCT extends Player {
 	}
 
 	private void log(String str) {
-		 if (bw != null) bw.println(str);
+		if (bw != null)
+			bw.println(str);
 	}
 
 }
@@ -155,7 +159,8 @@ class TreeNode implements Runnable {
 	OddBoard board;
 	UCT player;
 	OddMove parentMove;
-	
+	boolean stop;
+
 	static final int SIZE = 4;
 	static final int SIZE_DATA = 2 * SIZE + 1;
 
@@ -169,7 +174,7 @@ class TreeNode implements Runnable {
 	}
 
 	public synchronized void run() {
-		while (!player.stop) {
+		while (!stop) {
 			selectAction();
 		}
 	}
@@ -230,32 +235,28 @@ class TreeNode implements Runnable {
 				bestValue = uctValue;
 			}
 		}
-//		incFreq(selected.parentMove);
+		// incFreq(selected.parentMove);
 		// System.out.println("Returning: " + selected);
 		return selected;
 	}
 
-/*	private void incFreq(OddMove m) {
-		player.moveFreq[m.getDestRow()+SIZE][m.getDestCol()+SIZE][(m.getColor()==Piece.WP) ? 0 : 1] ++;
-		
-	}
-	
-	private int getMoveFreq(OddMove m){
-		return player.moveFreq[m.getDestRow()+SIZE][m.getDestCol()+SIZE][(m.getColor()==Piece.WP) ? 0 : 1];
-	}
-	
-	private OddMove firstOrderHeuristic(OddBoard b){
-		OddMove best =null;
-		int f=-1;
-		for(OddMove m: b.getValidMoves()){
-			if(getMoveFreq(m) > f){
-				best = m;
-			}
-		}
-		return best;
-	}*/
-	
-	private OddMove randomMove(OddBoard b){
+	/*
+	 * private void incFreq(OddMove m) {
+	 * player.moveFreq[m.getDestRow()+SIZE][m.getDestCol
+	 * ()+SIZE][(m.getColor()==Piece.WP) ? 0 : 1] ++;
+	 * 
+	 * }
+	 * 
+	 * private int getMoveFreq(OddMove m){ return
+	 * player.moveFreq[m.getDestRow()+
+	 * SIZE][m.getDestCol()+SIZE][(m.getColor()==Piece.WP) ? 0 : 1]; }
+	 * 
+	 * private OddMove firstOrderHeuristic(OddBoard b){ OddMove best =null; int
+	 * f=-1; for(OddMove m: b.getValidMoves()){ if(getMoveFreq(m) > f){ best =
+	 * m; } } return best; }
+	 */
+
+	private OddMove randomMove(OddBoard b) {
 		return b.getValidMoves().get(r.nextInt(b.getValidMoves().size()));
 	}
 
@@ -283,7 +284,7 @@ class TreeNode implements Runnable {
 	}
 
 	public void updateStats(double value) {
-		if(!player.stop){
+		if (!this.stop) {
 			nVisits++;
 			totValue += value;
 		}
