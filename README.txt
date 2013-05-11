@@ -17,7 +17,6 @@ Contents: 1-Overview
           7- AI Players
           8-Implementing a Player
           9-Implementing a different game
-          10-Changes  
 
 
 1-Overview
