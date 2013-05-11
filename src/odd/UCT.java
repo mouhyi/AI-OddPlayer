@@ -117,7 +117,7 @@ public class UCT extends Player {
 	}
 
 	private void initLog() {
-		File logFile = new File("logs/UCT22.txt");
+		File logFile = new File("logs/UCT.txt");
 		try {
 			bw = new PrintStream(new FileOutputStream(logFile));
 		} catch (FileNotFoundException e) {
