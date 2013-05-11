@@ -2,6 +2,11 @@ Board Game Client/Server packages
 Author: Philipp Keller <pkelle@cs.mcgill.ca>
 Updates: January 20, 2010 (by Robert West, rwest@cs.mcgill.ca)
 Last update: March 16, 2013 (by Gheorghe Comanici, gcoman@cs.mcgill.ca)
+
+AI Players
+Author: Mouhyi Eddine El Bouhali <mouhyi.elbouhali@mail.mcgill.ca>
+Last update: May 11, 2013 (Mouhyi Eddine El Bouhali)
+
 ---------------------------------
 Contents: 1-Overview
           2-Compiling
@@ -9,16 +14,18 @@ Contents: 1-Overview
           4-Launching a Client
           5-Launching the logfile viewer
           6-Human players
-          7-Implementing a Player
-          8-Implementing a different game
-          9-Changes  
+          7- AI Players
+          8-Implementing a Player
+          9-Implementing a different game
+          10-Changes  
 
 
 1-Overview
 ----------
-This software consists of two packages:
+This software consists of 3 packages:
 * boardgame: a generic board game client/server package and
 * Odd: an implementation of the "Odd" game based on it.
+* test: testing package
 
 The boardgame package is intended to allow the implementation of
 different board games and AI players with minimal effort. It provides
@@ -32,8 +39,7 @@ A GUI, which can be run by the server to display an ongoing game or
 manually to examine existing log files is provided but is not required
 to run the servers or clients.
 
-THIS SOFTWARE HAS NOT BEEN EXTENSIVELY TESTED. PLEASE REPORT ANY BUGS
-ASAP!
+THIS SOFTWARE HAS NOT BEEN EXTENSIVELY TESTED!
 
 This software was built and tested using Sun JDK 1.5.0, but is
 source-compatible with Sun JDK 1.4 (I think!).
@@ -51,19 +57,29 @@ ROOT
 |   |-- ServerGUI.java               Main GUI class
 |   `-- BoardPanel.java		     Displays and gets input for a board in GUI
 |-- odd
-|   |-- OddBoard.java	       Board implementation, contains game logic
+|   |-- OddBoard.java	         Board implementation, contains game logic
 |   |-- OddMove.java           Move implementation, just data storage
 |   |-- OddBoardPanel.java     Custom display for GUI
 |   |-- OddHumanPlayer.java    Human player for GUI
 |   |-- OddRandomPlayer.java   Random player; always tries to pass ball forward
 |   `-- OddNullPlayer.java     Player who always plays empty move (for debugging)
+|   |-- MTDPlayer.java			   AI Player that implements the MTD(f) algorithm
+|   |-- UCT.java			         AI Player that implements the UCT algorithm
+|   |-- UCTRAVE.java			     AI Player that implements the UCTRAVE algorithm
+|-- test
+|   |-- AutomatedTester.java
+|   |-- ResultsGenerator.java
+|   |-- TEST-README.txt
+|-- logs
 |-- image
 |   |-- first.png                    Icons for GUI
 |   |-- last.png
 |   |-- next.png
 |   `-- prev.png
 |-- README.txt                       This file
-`-- coord_sys.jpg		     Coordinate system used for action choice
+|-- AI.pdf                           Description of the AI approaches in this project
+|-- test.properties
+|-- coord_sys.jpg		     Coordinate system used for action choice
     				     (source: http://www.sciencedirect.com/science/article/pii/S0198971507000889 )
 
 2-Compiling
@@ -150,8 +166,12 @@ IMPORTANT: Set a large timeout for the server for remote clients since
 the server doesn't know whether it is communicating with a computer 
 or human player.
 
+7-AI Player
+-----------------------
+Three AI players are implemented in this project: MTDPlayer.java, UCT.java, UCTRAVE.java.
+See AI.pdf for a discussion of the AI in this project.
 
-7-Implementing a Player
+8-Implementing a Player
 -----------------------
 To implement a new player, extend the boardgame.Player class, and 
 pass the new class as the argument to the client software. See the 
@@ -175,7 +195,7 @@ neighbours are as follows:
 
 This is better understood in 'coord_sys.jpg'.
 
-8-Implementing a different game
+9-Implementing a different game
 -------------------------------
 To implement a different game, extend the boardgame.Board class and
 pass the new class as the argument to the server software. See the
@@ -198,15 +218,3 @@ Only the fist step is needed to run the server without displaying a
 board.
 
 The classes of the odd package provide an example.
-
-
-9-Changes
----------
-v0.01 2005/07/12 - Initial version
-v0.02 2005/09/12 - Added breakthrough.BTFixedPlayer
-                 - Changed breakthrough.BTBoard to recognize absence
-                   of pieces as a loss
-v0.03 2005/09/16 - Made breakthrough.BTFixedPlayer Java 1.4 compatible
-v0.04 2005/09/21 - Added HumanPlayer.java and BTHumanPlayer.java
-v0.05 2010/01/20 - Adapted from Breakthough to Phootball (Philosophers' football)
-v0.06 2013/03/16 - Adapted from Phooball to Odd Game
