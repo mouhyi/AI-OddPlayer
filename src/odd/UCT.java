@@ -19,15 +19,18 @@ import boardgame.Move;
 import boardgame.Player;
 
 /*
+ * UCT - exploration factor= 0.4
  * Used the MTC implementation from http://mcts.ai/code/java.html
  */
 
 public class UCT extends Player {
 
+	boolean stop = false;
+
 	private OddMove bestMove;
 	int[][][] moveFreq;
 
-	protected static final int DEFAULT_TIMEOUT = 4000;
+	protected static final int DEFAULT_TIMEOUT = 3000;
 	private TimerTask timeoutTask;
 	private Timer timer = new Timer();
 	private int timeout = DEFAULT_TIMEOUT;
@@ -36,35 +39,35 @@ public class UCT extends Player {
 	Random R;
 	private Object monitor;
 	OddBoard myboard;
-
+	
 	TreeNode tn;
 
 	public UCT() {
 		super("UCT");
 		monitor = new Object();
 		initLog();
-		moveFreq = new int[TreeNode.SIZE_DATA][TreeNode.SIZE_DATA][2];
+		moveFreq = new int [TreeNode.SIZE_DATA][TreeNode.SIZE_DATA][2];
 	}
 
 	@Override
 	public Move chooseMove(Board board) {
-
+		
 		// init vars
 		this.myboard = (OddBoard) board;
-		long startTime = System.currentTimeMillis();
-
+		stop = false;
 		TreeNode.totalSims = 0;
+		
+		resetTimer();
 
-		this.tn = new TreeNode(this.myboard, this, null);
-		tn.stop = false;
-
-		System.out.println("sleep " + (System.currentTimeMillis() - startTime));
-
-		while (System.currentTimeMillis() - startTime < DEFAULT_TIMEOUT) {
-			tn.selectAction();
+		try {
+			synchronized (monitor) {
+				monitor.wait();
+			}
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally {
+			return getBestMove();
 		}
-		return getBestMove();
-
 	}
 
 	void updateBestMove(OddMove m) {
@@ -72,20 +75,12 @@ public class UCT extends Player {
 	}
 
 	OddMove getBestMove() {
-		int max = 0;
-		OddMove best = null;
-		for (TreeNode child : tn.children) {
-			if (child.nVisits > max) {
-				max = child.nVisits;
-				best = child.parentMove;
-			}
-		}
-		return best;
+		return bestMove;
 	}
 
 	private void resetTimer() {
 		cancelTimeout();
-		tn.stop = false;
+		stop = false;
 
 		timeoutTask = new TimerTask() {
 			public void run() {
@@ -99,7 +94,6 @@ public class UCT extends Player {
 		this.curT.start();
 	}
 
-	// So the GUI can cancel the timeout
 	synchronized void cancelTimeout() {
 		if (timeoutTask != null)
 			timeoutTask.cancel();
@@ -107,10 +101,8 @@ public class UCT extends Player {
 	}
 
 	private synchronized void timeOut() {
-		tn.stop = true;
-
-		// log("Interrupt");
-
+		stop = true;
+		
 		// find best move
 		int max = 0;
 		for (TreeNode child : tn.children) {
@@ -119,29 +111,22 @@ public class UCT extends Player {
 				updateBestMove(child.parentMove);
 			}
 		}
-		// log("Done");
 		synchronized (monitor) {
 			monitor.notify();
 		}
-
-		// this.curT.interrupt();
-
-		// log("Sims= " + TreeNode.totalSims);
 	}
 
 	private void initLog() {
-		File logFile = new File("logs/myOut-UCT.txt");
+		File logFile = new File("logs/UCT22.txt");
 		try {
 			bw = new PrintStream(new FileOutputStream(logFile));
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
 	private void log(String str) {
-		if (bw != null)
-			bw.println(str);
+		 if (bw != null) bw.println(str);
 	}
 
 }
@@ -153,14 +138,14 @@ class TreeNode implements Runnable {
 	static int WIN = 1;
 	static int LOSS = 0;
 	static int totalSims = 0;
+	static double EXPLORATION=0.4;
 
 	TreeNode[] children;
 	int nVisits, totValue;
 	OddBoard board;
 	UCT player;
 	OddMove parentMove;
-	boolean stop;
-
+	
 	static final int SIZE = 4;
 	static final int SIZE_DATA = 2 * SIZE + 1;
 
@@ -174,7 +159,7 @@ class TreeNode implements Runnable {
 	}
 
 	public synchronized void run() {
-		while (!stop) {
+		while (!player.stop) {
 			selectAction();
 		}
 	}
@@ -222,11 +207,15 @@ class TreeNode implements Runnable {
 	}
 
 	private TreeNode select() {
+		return (this.board.getTurn() == this.player.getColor()) ? selectMax() : selectMin();
+	}
+	
+	private TreeNode selectMax() {
 		TreeNode selected = null;
 		double bestValue = Double.MIN_VALUE;
 		for (TreeNode c : children) {
 			double uctValue = c.totValue / (c.nVisits + epsilon)
-					+ Math.sqrt(Math.log(nVisits + 1) / (c.nVisits + epsilon))
+					+ EXPLORATION*Math.sqrt(Math.log(nVisits + 1) / (c.nVisits + epsilon))
 					+ r.nextDouble() * epsilon;
 			// small random number to break ties randomly in unexpanded nodes
 			// System.out.println("UCT value = " + uctValue);
@@ -235,28 +224,49 @@ class TreeNode implements Runnable {
 				bestValue = uctValue;
 			}
 		}
-		// incFreq(selected.parentMove);
-		// System.out.println("Returning: " + selected);
+//		incFreq(selected.parentMove);
+		return selected;
+	}
+	
+	private TreeNode selectMin() {
+		TreeNode selected = null;
+		double bestValue = Double.MAX_VALUE;
+		for (TreeNode c : children) {
+			double uctValue = c.totValue / (c.nVisits + epsilon)
+					- EXPLORATION*Math.sqrt(Math.log(nVisits + 1) / (c.nVisits + epsilon))
+					- r.nextDouble() * epsilon;
+			// small random number to break ties randomly in unexpanded nodes
+			// System.out.println("UCT value = " + uctValue);
+			if (uctValue < bestValue) {
+				selected = c;
+				bestValue = uctValue;
+			}
+		}
+//		incFreq(selected.parentMove);
 		return selected;
 	}
 
-	/*
-	 * private void incFreq(OddMove m) {
-	 * player.moveFreq[m.getDestRow()+SIZE][m.getDestCol
-	 * ()+SIZE][(m.getColor()==Piece.WP) ? 0 : 1] ++;
-	 * 
-	 * }
-	 * 
-	 * private int getMoveFreq(OddMove m){ return
-	 * player.moveFreq[m.getDestRow()+
-	 * SIZE][m.getDestCol()+SIZE][(m.getColor()==Piece.WP) ? 0 : 1]; }
-	 * 
-	 * private OddMove firstOrderHeuristic(OddBoard b){ OddMove best =null; int
-	 * f=-1; for(OddMove m: b.getValidMoves()){ if(getMoveFreq(m) > f){ best =
-	 * m; } } return best; }
-	 */
-
-	private OddMove randomMove(OddBoard b) {
+/*	private void incFreq(OddMove m) {
+		player.moveFreq[m.getDestRow()+SIZE][m.getDestCol()+SIZE][(m.getColor()==Piece.WP) ? 0 : 1] ++;
+		
+	}
+	
+	private int getMoveFreq(OddMove m){
+		return player.moveFreq[m.getDestRow()+SIZE][m.getDestCol()+SIZE][(m.getColor()==Piece.WP) ? 0 : 1];
+	}
+	
+	private OddMove firstOrderHeuristic(OddBoard b){
+		OddMove best =null;
+		int f=-1;
+		for(OddMove m: b.getValidMoves()){
+			if(getMoveFreq(m) > f){
+				best = m;
+			}
+		}
+		return best;
+	}*/
+	
+	private OddMove randomMove(OddBoard b){
 		return b.getValidMoves().get(r.nextInt(b.getValidMoves().size()));
 	}
 
@@ -284,7 +294,7 @@ class TreeNode implements Runnable {
 	}
 
 	public void updateStats(double value) {
-		if (!this.stop) {
+		if(!player.stop){
 			nVisits++;
 			totValue += value;
 		}
