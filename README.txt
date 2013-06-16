@@ -62,9 +62,9 @@ ROOT
 |   |-- OddHumanPlayer.java    Human player for GUI
 |   |-- OddRandomPlayer.java   Random player; always tries to pass ball forward
 |   `-- OddNullPlayer.java     Player who always plays empty move (for debugging)
-|   |-- MTDPlayer.java			AI Player that implements the MTD(f) algorithm
-|   |-- UCT.java			      AI Player that implements the UCT algorithm
-|   |-- UCTRAVE.java			  AI Player that implements the UCTRAVE algorithm
+|   |-- MTDPlayer.java	AI Player that implements the MTD(f) algorithm
+|   |-- UCT.java	          AI Player that implements the UCT algorithm
+|   |-- UCTRAVE.java	AI Player that implements the UCT RAVE algorithm
 |-- test
 |   |-- AutomatedTester.java
 |   |-- ResultsGenerator.java
