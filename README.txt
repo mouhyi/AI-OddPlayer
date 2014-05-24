@@ -1,11 +1,12 @@
-Board Game Client/Server packages
-Author: Philipp Keller <pkelle@cs.mcgill.ca>
-Updates: January 20, 2010 (by Robert West, rwest@cs.mcgill.ca)
-Last update: March 16, 2013 (by Gheorghe Comanici, gcoman@cs.mcgill.ca)
 
 AI Players
 Author: Mouhyi Eddine El Bouhali <mouhyi.elbouhali@mail.mcgill.ca>
 Last update: May 11, 2013 (Mouhyi Eddine El Bouhali)
+
+Board Game Client/Server packages
+Author: Philipp Keller <pkelle@cs.mcgill.ca>
+Updates: January 20, 2010 (by Robert West, rwest@cs.mcgill.ca)
+Last update: March 16, 2013 (by Gheorghe Comanici, gcoman@cs.mcgill.ca)
 
 ---------------------------------
 Contents: 1-Overview
